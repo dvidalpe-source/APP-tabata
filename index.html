@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+<meta name="theme-color" content="#12181A" />
+<title>Cuerda &amp; Calorías</title>
+<meta name="description" content="Cronómetro de salto de soga con cálculo de calorías en tiempo real" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon-192.png" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Cuerda" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #12181A;
+    --panel: #1B2326;
+    --panel-2: #222C2F;
+    --border: rgba(255,255,255,0.08);
+    --border-strong: rgba(255,255,255,0.16);
+    --text-primary: #F2F3EF;
+    --text-secondary: #9FAAA8;
+    --text-muted: #6C7674;
+    --work: #FF5E2D;
+    --work-dim: #4A2C1C;
+    --rest: #2BD99F;
+    --rest-dim: #1C3C32;
+    --idle: #3B4548;
+    --radius: 16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, sans-serif;
+    min-height: 100vh;
+    display:flex;
+    justify-content:center;
+    padding: 24px 16px 48px;
+    line-height: 1.5;
+  }
+  .app{ width:100%; max-width: 420px; }
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--work);
+    margin: 0 0 4px;
+  }
+  h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size: 26px;
+    margin: 0 0 20px;
+    letter-spacing: -0.01em;
+  }
+  .setup{
+    display:flex;
+    gap:10px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .field{ flex:1; min-width: 90px; }
+  .field label{
+    display:block;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+  input[type="number"], select{
+    width:100%;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 16px;
+    font-family: inherit;
+    appearance: none;
+  }
+  input[type="number"]:focus, select:focus{
+    outline:none;
+    border-color: var(--work);
+  }
+  .buttons{
+    display:flex;
+    gap:10px;
+    margin-bottom: 24px;
+  }
+  button{
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 500;
+    font-size: 15px;
+    border-radius: 10px;
+    border: 1px solid var(--border-strong);
+    background: var(--panel);
+    color: var(--text-primary);
+    padding: 13px 16px;
+    cursor: pointer;
+    transition: transform 0.1s ease, background 0.2s ease;
+  }
+  button:active{ transform: scale(0.97); }
+  #startBtn{
+    flex:1;
+    background: var(--work);
+    border-color: var(--work);
+    color: #1A0E07;
+    font-weight: 700;
+  }
+  #resetBtn{ width: 52px; padding:0; display:flex; align-items:center; justify-content:center; }
+  #resetBtn svg{ width:18px; height:18px; }
+
+  .ring-wrap{
+    position: relative;
+    width: 260px;
+    height: 260px;
+    margin: 0 auto 22px;
+  }
+  svg.ring{ transform: rotate(-90deg); width:100%; height:100%; }
+  .ring-track{ fill:none; stroke: var(--panel-2); stroke-width: 10; }
+  .ring-progress{
+    fill:none;
+    stroke: var(--idle);
+    stroke-width: 10;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.9s linear, stroke 0.3s ease;
+  }
+  .ring-center{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding: 0 30px;
+  }
+  #phaseLabel{
+    font-family:'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin: 0 0 6px;
+  }
+  #timeDisplay{
+    font-family:'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 48px;
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  #instructionText{
+    font-family:'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    margin: 8px 0 0;
+    min-height: 20px;
+  }
+
+  .stats{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .stat-card{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .stat-card p:first-child{
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0 0 4px;
+  }
+  .stat-card p:last-child{
+    font-family:'Space Grotesk', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0;
+  }
+  .progress-row{ display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted); margin-bottom:6px; }
+  .progress-track{ height:6px; background:var(--panel-2); border-radius:3px; overflow:hidden; }
+  .progress-fill{ height:100%; width:0%; background: var(--rest); transition: width 0.4s ease; }
+
+  #summaryMsg{
+    font-size: 13px;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-top: 18px;
+    min-height: 18px;
+  }
+  .disclaimer{
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 28px;
+    line-height: 1.6;
+  }
+  @media (max-width: 360px){
+    .ring-wrap{ width: 220px; height: 220px; }
+    #timeDisplay{ font-size: 40px; }
+  }
+</style>
+</head>
+<body>
+<video id="noSleepVideo" muted playsinline loop preload="auto" style="position:absolute; width:1px; height:1px; opacity:0; pointer-events:none;"><source src="data:video/mp4;base64,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" type="video/mp4"></video>
+<div class="app">
+  <p class="eyebrow">Bloque principal · soga</p>
+  <h1>Cuerda &amp; calorías</h1>
+
+  <div class="setup">
+    <div class="field">
+      <label for="weight">Peso (kg)</label>
+      <input type="number" id="weight" value="73" min="30" max="200" step="1" />
+    </div>
+    <div class="field">
+      <label for="rounds">Rondas</label>
+      <select id="rounds">
+        <option value="3">3</option>
+        <option value="4" selected>4</option>
+        <option value="5">5</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="buttons">
+    <button id="startBtn">Iniciar</button>
+    <button id="resetBtn" aria-label="Reiniciar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+    </button>
+  </div>
+
+  <div class="ring-wrap">
+    <svg class="ring" viewBox="0 0 260 260">
+      <circle class="ring-track" cx="130" cy="130" r="115"></circle>
+      <circle id="ringProgress" class="ring-progress" cx="130" cy="130" r="115" stroke-dasharray="722.6" stroke-dashoffset="722.6"></circle>
+    </svg>
+    <div class="ring-center">
+      <p id="phaseLabel">Listo para empezar</p>
+      <p id="timeDisplay">00:00</p>
+      <p id="instructionText">&nbsp;</p>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card">
+      <p>Calorías quemadas</p>
+      <p id="kcalNow">0 kcal</p>
+    </div>
+    <div class="stat-card">
+      <p>Meta</p>
+      <p id="kcalGoal">200 kcal</p>
+    </div>
+  </div>
+
+  <div class="progress-row">
+    <span>Progreso hacia la meta</span>
+    <span id="progressPct">0%</span>
+  </div>
+  <div class="progress-track">
+    <div id="progressBar" class="progress-fill"></div>
+  </div>
+
+  <p id="summaryMsg">&nbsp;</p>
+
+  <p class="disclaimer">Las calorías son una estimación basada en tu peso e intensidad, no una medición exacta. Ajusta la rutina a tu nivel y consulta a un profesional si tienes alguna condición médica.</p>
+</div>
+
+<script>
+(function(){
+  var weightInput = document.getElementById('weight');
+  var roundsSelect = document.getElementById('rounds');
+  var startBtn = document.getElementById('startBtn');
+  var resetBtn = document.getElementById('resetBtn');
+  var phaseLabel = document.getElementById('phaseLabel');
+  var timeDisplay = document.getElementById('timeDisplay');
+  var instructionText = document.getElementById('instructionText');
+  var kcalNow = document.getElementById('kcalNow');
+  var progressBar = document.getElementById('progressBar');
+  var progressPct = document.getElementById('progressPct');
+  var summaryMsg = document.getElementById('summaryMsg');
+  var ringProgress = document.getElementById('ringProgress');
+
+  var GOAL = 200;
+  var MET_WORK = 12.3;
+  var MET_REST = 2.0;
+  var RING_CIRC = 722.6;
+
+  var WORK_MOVES = [
+    'Salto basico a maxima velocidad',
+    'Rodillas altas',
+    'Doble salto o boxer step'
+  ];
+
+  var segments = [];
+  var segIndex = 0;
+  var timeLeft = 0;
+  var totalKcal = 0;
+  var timerId = null;
+  var running = false;
+  var wakeLock = null;
+  var noSleepVideo = document.getElementById('noSleepVideo');
+
+  function requestWakeLock(){
+    if (!('wakeLock' in navigator)) return;
+    navigator.wakeLock.request('screen').then(function(lock){
+      wakeLock = lock;
+      wakeLock.addEventListener('release', function(){
+        wakeLock = null;
+      });
+    }).catch(function(){
+      wakeLock = null;
+    });
+  }
+
+  function releaseWakeLock(){
+    if (wakeLock){
+      wakeLock.release().catch(function(){});
+      wakeLock = null;
+    }
+  }
+
+  function startNoSleepVideo(){
+    if (!noSleepVideo) return;
+    var playPromise = noSleepVideo.play();
+    if (playPromise && playPromise.catch){
+      playPromise.catch(function(){});
+    }
+  }
+
+  function stopNoSleepVideo(){
+    if (!noSleepVideo) return;
+    noSleepVideo.pause();
+  }
+
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'visible' && running){
+      if (!wakeLock) requestWakeLock();
+      startNoSleepVideo();
+    }
+  });
+
+  function buildSegments(rounds){
+    var segs = [];
+    for (var r = 1; r <= rounds; r++){
+      for (var rep = 1; rep <= 6; rep++){
+        segs.push({type:'work', duration:20, round:r, move:WORK_MOVES[(rep-1) % WORK_MOVES.length]});
+        segs.push({type:'rest', duration:10, round:r});
+      }
+      if (r !== rounds){
+        segs.push({type:'roundrest', duration:50, round:r});
+      }
+    }
+    return segs;
+  }
+
+  function fmtTime(s){
+    var m = Math.floor(s/60);
+    var sec = s%60;
+    return (m<10?'0':'')+m+':'+(sec<10?'0':'')+sec;
+  }
+
+  function kcalPerSecond(type, weight){
+    var met = type === 'work' ? MET_WORK : MET_REST;
+    return (met * 3.5 * weight / 200) / 60;
+  }
+
+  function phaseText(type){
+    if (type === 'work') return 'Trabajo';
+    if (type === 'rest') return 'Descanso corto';
+    return 'Descanso entre rondas';
+  }
+
+  function instructionFor(seg){
+    if (seg.type === 'work') return seg.move;
+    if (seg.type === 'rest') return 'Salto suave o camina en el sitio';
+    return 'Bebe agua y sacude las piernas';
+  }
+
+  function setPhaseStyle(seg){
+    if (seg.type === 'work'){
+      ringProgress.style.stroke = 'var(--work)';
+      instructionText.style.color = 'var(--work)';
+    } else {
+      ringProgress.style.stroke = 'var(--rest)';
+      instructionText.style.color = 'var(--text-primary)';
+    }
+    var frac = seg.duration > 0 ? (timeLeft / seg.duration) : 0;
+    var offset = RING_CIRC * (1 - frac);
+    ringProgress.style.strokeDashoffset = String(offset);
+  }
+
+  function updateDisplay(){
+    timeDisplay.textContent = fmtTime(timeLeft);
+    kcalNow.textContent = totalKcal.toFixed(1) + ' kcal';
+    var pct = Math.min(100, Math.round((totalKcal/GOAL)*100));
+    progressBar.style.width = pct + '%';
+    progressPct.textContent = pct + '%';
+    if (segIndex < segments.length){
+      var seg = segments[segIndex];
+      phaseLabel.textContent = phaseText(seg.type) + ' · ronda ' + seg.round + '/' + Number(roundsSelect.value);
+      instructionText.textContent = instructionFor(seg);
+      setPhaseStyle(seg);
+    }
+  }
+
+  function tick(){
+    var w = Number(weightInput.value) || 73;
+    var seg = segments[segIndex];
+    totalKcal += kcalPerSecond(seg.type, w);
+    timeLeft -= 1;
+    if (timeLeft <= 0){
+      segIndex += 1;
+      if (segIndex >= segments.length){
+        finish();
+        return;
+      }
+      timeLeft = segments[segIndex].duration;
+    }
+    updateDisplay();
+  }
+
+  function finish(){
+    clearInterval(timerId);
+    timerId = null;
+    running = false;
+    releaseWakeLock();
+    stopNoSleepVideo();
+    phaseLabel.textContent = 'Sesion completa';
+    timeDisplay.textContent = '00:00';
+    instructionText.textContent = 'Buen trabajo, estira pantorrillas e isquiotibiales';
+    instructionText.style.color = 'var(--text-primary)';
+    ringProgress.style.stroke = 'var(--rest)';
+    ringProgress.style.strokeDashoffset = '0';
+    startBtn.textContent = 'Iniciar';
+    if (totalKcal >= GOAL){
+      summaryMsg.textContent = 'Meta alcanzada: ' + totalKcal.toFixed(1) + ' kcal quemadas.';
+    } else {
+      summaryMsg.textContent = 'Sesion terminada con ' + totalKcal.toFixed(1) + ' kcal. Suma otra ronda para llegar a la meta.';
+    }
+    updateDisplay();
+  }
+
+  function start(){
+    if (running) return;
+    if (segments.length === 0 || segIndex >= segments.length){
+      segments = buildSegments(Number(roundsSelect.value));
+      segIndex = 0;
+      timeLeft = segments[0].duration;
+      totalKcal = 0;
+      summaryMsg.innerHTML = '&nbsp;';
+    }
+    running = true;
+    weightInput.disabled = true;
+    roundsSelect.disabled = true;
+    startBtn.textContent = 'Pausar';
+    requestWakeLock();
+    startNoSleepVideo();
+    updateDisplay();
+    timerId = setInterval(tick, 1000);
+  }
+
+  function pause(){
+    running = false;
+    clearInterval(timerId);
+    timerId = null;
+    releaseWakeLock();
+    stopNoSleepVideo();
+    startBtn.textContent = 'Reanudar';
+  }
+
+  function reset(){
+    clearInterval(timerId);
+    timerId = null;
+    running = false;
+    releaseWakeLock();
+    stopNoSleepVideo();
+    segments = [];
+    segIndex = 0;
+    timeLeft = 0;
+    totalKcal = 0;
+    weightInput.disabled = false;
+    roundsSelect.disabled = false;
+    startBtn.textContent = 'Iniciar';
+    phaseLabel.textContent = 'Listo para empezar';
+    timeDisplay.textContent = '00:00';
+    instructionText.innerHTML = '&nbsp;';
+    kcalNow.textContent = '0 kcal';
+    progressBar.style.width = '0%';
+    progressPct.textContent = '0%';
+    summaryMsg.innerHTML = '&nbsp;';
+    ringProgress.style.stroke = 'var(--idle)';
+    ringProgress.style.strokeDashoffset = String(RING_CIRC);
+  }
+
+  startBtn.addEventListener('click', function(){
+    if (running){ pause(); } else { start(); }
+  });
+  resetBtn.addEventListener('click', reset);
+
+  if ('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('service-worker.js').catch(function(){});
+    });
+  }
+})();
+</script>
+</body>
+</html>
